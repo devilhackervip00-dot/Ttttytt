@@ -1,0 +1,848 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEVICE ACCESS CONTROL</title>
+    <script src="js/firebase-app-compat.js"></script>
+    <script src="js/firebase-database-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            background: #ffffff;
+            color: #000000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        /* AUTH CARD STYLES */
+        .auth-card {
+            background: #ffffff;
+            border: 2px solid #000000;
+            border-radius: 12px;
+            padding: 30px 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 25px;
+            position: relative;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #000000;
+            filter: contrast(1.2);
+            position: relative;
+            z-index: 10;
+            animation: 
+                logoFloat 6s ease-in-out infinite,
+                logoGlow 4s ease-in-out infinite alternate;
+            box-shadow: 
+                0 0 20px rgba(0, 0, 0, 0.1),
+                inset 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .info-box {
+            background: #f8f8f8;
+            border: 1px solid #000000;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .info-box label {
+            display: block;
+            color: #333333;
+            font-size: 11px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-box .value {
+            color: #000000;
+            font-weight: 600;
+            word-break: break-all;
+            text-transform: uppercase;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .input-box {
+            background: #ffffff;
+            border: 1px solid #000000;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .access-key-label {
+            color: #000000;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 8px 12px;
+            background: transparent;
+            border: 1px solid #000000;
+            border-radius: 6px;
+            color: #000000;
+            font-family: inherit;
+            font-size: 14px;
+            text-align: center;
+            outline: none;
+            max-width: 180px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .input-field:focus {
+            border-color: #000000;
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-field::placeholder {
+            color: #888888;
+            text-align: center;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: #000000;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.4s;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 1.2s ease-out, buttonPulse 2s ease-in-out infinite;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .submit-btn:hover {
+            background: #222222;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            animation: none;
+        }
+
+        .submit-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 11px;
+            color: #666666;
+            text-transform: uppercase;
+            line-height: 1.4;
+            animation: fadeInUp 1.4s ease-out;
+        }
+
+        .error-message {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #ff4444;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            min-height: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .error-message.show {
+            opacity: 1;
+        }
+
+        /* DASHBOARD STYLES */
+        .dashboard {
+            display: none;
+            width: 100%;
+        }
+
+        .dashboard-card {
+            background: #ffffff;
+            border: 2px solid #000000;
+            border-radius: 12px;
+            padding: 30px 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+
+        .dashboard-title {
+            font-size: 18px;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .key-info-box {
+            background: #f8f8f8;
+            border: 1px solid #000000;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .key-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #dddddd;
+        }
+
+        .key-info-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .key-info-label {
+            color: #333333;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .key-info-value {
+            color: #000000;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+
+        .expiry-box {
+            background: #000000;
+            color: #ffffff;
+            border-radius: 8px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .expiry-title {
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .countdown {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .countdown-days {
+            font-size: 32px;
+        }
+
+        .countdown-separator {
+            margin: 0 5px;
+        }
+
+        .countdown-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .countdown-label span {
+            flex: 1;
+        }
+
+        .start-prediction-btn {
+            width: 100%;
+            padding: 15px;
+            background: #000000;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+
+        .start-prediction-btn:hover {
+            background: #222222;
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 15px;
+            background: #ffffff;
+            color: #000000;
+            border: 2px solid #000000;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #f0f0f0;
+        }
+
+        /* Loading Overlay */
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #f0f0f0;
+            border-top: 3px solid #000000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        .loading-text {
+            color: #000000;
+            font-size: 16px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Success Message */
+        .success-message {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #00aa00;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            min-height: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .success-message.show {
+            opacity: 1;
+        }
+
+        /* Animation keyframes */
+        @keyframes logoFloat {
+            0%, 100% {
+                transform: translateY(0) scale(1);
+            }
+            50% {
+                transform: translateY(-10px) scale(1.05);
+            }
+        }
+
+        @keyframes logoGlow {
+            0% {
+                box-shadow: 
+                    0 0 20px rgba(0, 0, 0, 0.1),
+                    inset 0 0 20px rgba(255, 255, 255, 0.5);
+            }
+            100% {
+                box-shadow: 
+                    0 0 30px rgba(0, 0, 0, 0.2),
+                    inset 0 0 30px rgba(255, 255, 255, 0.8);
+            }
+        }
+
+        @keyframes buttonPulse {
+            0%, 100% {
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                transform: translateY(0);
+            }
+            50% {
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+                transform: translateY(-2px);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            .auth-card, .dashboard-card {
+                padding: 25px 20px;
+            }
+            
+            .access-key-label {
+                font-size: 13px;
+            }
+            
+            .input-field {
+                max-width: 150px;
+            }
+            
+            .countdown {
+                font-size: 20px;
+            }
+            
+            .countdown-days {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- AUTHENTICATION SECTION -->
+    <div class="container" id="authSection">
+        <div class="auth-card">
+            <div class="logo-container">
+                <div class="logo-halo"></div>
+                <div class="logo-ring"></div>
+                <div class="logo-ring-2"></div>
+                <div class="logo-particle"></div>
+                <div class="logo-particle"></div>
+                <div class="logo-particle"></div>
+                <div class="logo-particle"></div>
+                <img src="image.png" alt="DEVICE LOGO" class="logo">
+            </div>
+            
+            <div class="info-box">
+                <label>DEVICE ID</label>
+                <div class="value" id="deviceBox">LOADING...</div>
+            </div>
+            
+            <div class="input-group">
+                <div class="input-box">
+                    <span class="access-key-label">ACCESS KEY</span>
+                    <input type="text" id="accessKey" class="input-field" placeholder="ENTER ACCESS KEY">
+                </div>
+            </div>
+            
+            <button class="submit-btn" onclick="checkAccess()">ACCESS NOW</button>
+            
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+            
+            <div class="status">
+                ENTER THE KEY THAT GENERATED FOR YOUR DEVICE ID
+            </div>
+        </div>
+    </div>
+
+    <!-- DASHBOARD SECTION -->
+    <div class="container dashboard" id="dashboardSection">
+        <div class="dashboard-card">
+            <div class="expiry-box">
+                <div class="expiry-title">KEY EXPIRES IN</div>
+                <div class="countdown" id="daysCountdown" style="display: none;">
+                    <span class="countdown-days" id="countdownDays">2</span> DAYS
+                </div>
+                <div class="countdown">
+                    <span id="countdownHours">18</span>
+                    <span class="countdown-separator">|</span>
+                    <span id="countdownMinutes">27</span>
+                    <span class="countdown-separator">|</span>
+                    <span id="countdownSeconds">54</span>
+                </div>
+                <div class="countdown-label">
+                    <span>HOURS</span>
+                    <span>MINUTES</span>
+                    <span>SECONDS</span>
+                </div>
+            </div>
+            
+            <h1 class="dashboard-title">KEY INFORMATION</h1>
+            
+            <div class="key-info-box">
+                <div class="key-info-item">
+                    <span class="key-info-label">Access Key</span>
+                    <span class="key-info-value" id="dashAccessKey">VIPACCESS12</span>
+                </div>
+                <div class="key-info-item">
+                    <span class="key-info-label">Device ID</span>
+                    <span class="key-info-value" id="dashDeviceId">313394</span>
+                </div>
+                <div class="key-info-item">
+                    <span class="key-info-label">Created At</span>
+                    <span class="key-info-value" id="dashCreatedAt">28/09/2025, 09:52:27</span>
+                </div>
+                <div class="key-info-item">
+                    <span class="key-info-label">Expires At</span>
+                    <span class="key-info-value" id="dashExpiresAt">01/10/2025, 09:52:27</span>
+                </div>
+            </div>
+            
+            <button class="start-prediction-btn">START PREDICTION</button>
+            <button class="logout-btn" onclick="logout()">LOGOUT</button>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">
+        <div class="loader"></div>
+        <div class="loading-text">ACCESS GRANTED</div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCev-fuSjM9hrGdbBJiVejadIZWRecOhvI",
+            authDomain: "premiumweb-ac250.firebaseapp.com",
+            databaseURL: "https://premiumweb-ac250-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "premiumweb-ac250",
+            storageBucket: "premiumweb-ac250.appspot.com",
+            messagingSenderId: "306720995210",
+            appId: "1:306720995210:web:77dbf9ef5446d8021a7a73",
+            measurementId: "G-LPY48PMY63"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Auto-generate device ID for display
+        let deviceId = localStorage.getItem('deviceId');
+        if (!deviceId) {
+            deviceId = 'ID' + Math.floor(Math.random() * 9000 + 1000);
+            localStorage.setItem('deviceId', deviceId);
+            database.ref('devices/' + deviceId).set({ status: 'PENDING', createdAt: Date.now() });
+        }
+        document.getElementById('deviceBox').textContent = deviceId.toUpperCase();
+
+        // Variables for dashboard
+        let countdownInterval;
+        let currentKeyData = null;
+
+        // Show error message
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            const successElement = document.getElementById('successMessage');
+            
+            errorElement.textContent = message;
+            errorElement.classList.add('show');
+            successElement.classList.remove('show');
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                errorElement.classList.remove('show');
+            }, 3000);
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const errorElement = document.getElementById('errorMessage');
+            const successElement = document.getElementById('successMessage');
+            
+            successElement.textContent = message;
+            successElement.classList.add('show');
+            errorElement.classList.remove('show');
+            
+            // Auto-hide after 2 seconds
+            setTimeout(() => {
+                successElement.classList.remove('show');
+            }, 2000);
+        }
+
+        // Check access key with device ID verification
+        function checkAccess() {
+            const enteredKey = document.getElementById('accessKey').value.trim().toUpperCase();
+            const currentDeviceId = document.getElementById('deviceBox').textContent;
+            const errorElement = document.getElementById('errorMessage');
+            const successElement = document.getElementById('successMessage');
+            
+            // Clear any previous messages
+            errorElement.classList.remove('show');
+            successElement.classList.remove('show');
+
+            if(!enteredKey) {
+                showError("PLEASE ENTER AN ACCESS KEY");
+                return;
+            }
+
+            // Show loading while checking
+            showLoading(true, "VERIFYING ACCESS...");
+
+            database.ref('keys').once('value').then(snapshot => {
+                let valid = false;
+                let keyData = null;
+                
+                snapshot.forEach(child => {
+                    const keyInfo = child.val();
+                    // Check if key matches AND device ID matches AND key is active
+                    if (keyInfo.key === enteredKey && 
+                        keyInfo.deviceId === currentDeviceId && 
+                        keyInfo.status === 'ACTIVE') {
+                        valid = true;
+                        keyData = keyInfo;
+                        keyData.id = child.key;
+                    }
+                });
+
+                if(valid) {
+                    // Check if key has expired
+                    if (keyData.expiryTime && Date.now() > keyData.expiryTime) {
+                        showLoading(false);
+                        showError("ACCESS KEY HAS EXPIRED");
+                        return;
+                    }
+                    
+                    // Update device status to active in database
+                    database.ref('devices/' + currentDeviceId).update({
+                        status: 'ACTIVE',
+                        lastAccess: Date.now(),
+                        accessKey: enteredKey
+                    });
+                    
+                    showSuccess("ACCESS GRANTED!");
+                    showLoading(true, "LOADING DASHBOARD...");
+                    
+                    // Store key data for dashboard
+                    currentKeyData = keyData;
+                    
+                    // Show dashboard after a short delay
+                    setTimeout(() => {
+                        showDashboard(keyData);
+                        showLoading(false);
+                    }, 1500);
+                } else {
+                    showLoading(false);
+                    showError("DETAILS NOT MATCHED - CHECK DEVICE ID & KEY");
+                }
+            }).catch(err => {
+                showLoading(false);
+                showError("CONNECTION ERROR - TRY AGAIN");
+            });
+        }
+
+        // Show dashboard with key information
+        function showDashboard(keyData) {
+            // Hide auth section, show dashboard
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('dashboardSection').style.display = 'block';
+            
+            // Update dashboard with key information
+            document.getElementById('dashAccessKey').textContent = keyData.key;
+            document.getElementById('dashDeviceId').textContent = keyData.deviceId;
+            
+            // Format dates
+            const createdDate = new Date(keyData.generatedTime);
+            const expiryDate = new Date(keyData.expiryTime);
+            
+            document.getElementById('dashCreatedAt').textContent = 
+                createdDate.toLocaleDateString('en-GB') + ', ' + 
+                createdDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            document.getElementById('dashExpiresAt').textContent = 
+                expiryDate.toLocaleDateString('en-GB') + ', ' + 
+                expiryDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            // Start countdown timer
+            startCountdown(keyData.expiryTime);
+        }
+
+        // Start countdown timer
+        function startCountdown(expiryTime) {
+            // Clear any existing interval
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            // Update countdown immediately
+            updateCountdown(expiryTime);
+            
+            // Update countdown every second
+            countdownInterval = setInterval(() => {
+                updateCountdown(expiryTime);
+            }, 1000);
+        }
+
+        // Update countdown display
+        function updateCountdown(expiryTime) {
+            const now = new Date().getTime();
+            const distance = expiryTime - now;
+            
+            // If countdown is over
+            if (distance < 0) {
+                clearInterval(countdownInterval);
+                document.getElementById('countdownDays').textContent = '0';
+                document.getElementById('countdownHours').textContent = '00';
+                document.getElementById('countdownMinutes').textContent = '00';
+                document.getElementById('countdownSeconds').textContent = '00';
+                showError("YOUR KEY HAS EXPIRED");
+                return;
+            }
+            
+            // Calculate days, hours, minutes, seconds
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            
+            // Update display
+            document.getElementById('countdownDays').textContent = days;
+            document.getElementById('countdownHours').textContent = hours.toString().padStart(2, '0');
+            document.getElementById('countdownMinutes').textContent = minutes.toString().padStart(2, '0');
+            document.getElementById('countdownSeconds').textContent = seconds.toString().padStart(2, '0');
+            
+            // Show or hide days count based on days remaining
+            const daysCountdown = document.getElementById('daysCountdown');
+            if (days > 0) {
+                daysCountdown.style.display = 'block';
+            } else {
+                daysCountdown.style.display = 'none';
+            }
+        }
+
+        // Logout function
+        function logout() {
+            // Clear countdown interval
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            // Show auth section, hide dashboard
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('dashboardSection').style.display = 'none';
+            
+            // Clear input field
+            document.getElementById('accessKey').value = '';
+            
+            // Show success message
+            showSuccess("LOGGED OUT SUCCESSFULLY");
+        }
+
+        // Update loading function to handle both cases
+        function showLoading(show, text = "ACCESS GRANTED") {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.style.display = 'flex';
+                overlay.querySelector('.loading-text').textContent = text;
+            } else {
+                overlay.style.display = 'none';
+            }
+        }
+
+        // Allow pressing Enter to submit
+        document.getElementById('accessKey').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkAccess();
+            }
+        });
+
+        // Clear error when user starts typing
+        document.getElementById('accessKey').addEventListener('input', function() {
+            document.getElementById('errorMessage').classList.remove('show');
+            document.getElementById('successMessage').classList.remove('show');
+        });
+
+        // Check if user is already logged in (for page refresh)
+        window.addEventListener('load', function() {
+            const savedKey = localStorage.getItem('accessKey');
+            const savedDeviceId = localStorage.getItem('deviceId');
+            
+            if (savedKey && savedDeviceId) {
+                // Check if key is still valid
+                database.ref('keys').orderByChild('key').equalTo(savedKey).once('value')
+                    .then(snapshot => {
+                        let valid = false;
+                        let keyData = null;
+                        
+                        snapshot.forEach(child => {
+                            const keyInfo = child.val();
+                            if (keyInfo.deviceId === savedDeviceId && 
+                                keyInfo.status === 'ACTIVE' && 
+                                keyInfo.expiryTime > Date.now()) {
+                                valid = true;
+                                keyData = keyInfo;
+                                keyData.id = child.key;
+                            }
+                        });
+                        
+                        if (valid) {
+                            currentKeyData = keyData;
+                            showDashboard(keyData);
+                        } else {
+                            // Clear invalid saved data
+                            localStorage.removeItem('accessKey');
+                        }
+                    });
+            }
+        });
+    </script>
+
+</body></html>
